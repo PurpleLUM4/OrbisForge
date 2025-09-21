@@ -17,7 +17,7 @@
 #define FONT_SIZE_SMALL  16
 
 
-#define DEBUG_LOG
+// #define DEBUG_LOG
 
 #ifdef DEBUG_LOG
  #define DEBUG_IP   "192.168.0.48"
