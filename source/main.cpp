@@ -133,11 +133,7 @@ int main(void) {
 
     const char* menuItems[] = {
         "Disable system updates",
-        "Enable system updates",
-        "Tuff option 3",
-        "Tuff option 4",
-        "Tuff option 5",
-        "Tuff option 6"
+        "Enable system updates"
     };
 
     int numMenuItems = sizeof(menuItems) / sizeof(menuItems[0]);
