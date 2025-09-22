@@ -1,7 +1,11 @@
+#include <stdio.h>
 #include <stdint.h>
+#include <stdarg.h>
+
 #include <orbis/libkernel.h>
 #include <orbis/VideoOut.h>
 #include <orbis/Sysmodule.h>
+
 
 #define GRAPHICS_USES_FONT
 
@@ -21,6 +25,13 @@ struct Color
     uint8_t g;
     uint8_t b;
 };
+
+//               Red Green Blue
+static Color black  = {   0,   0,   0 };
+static Color white  = { 255, 255, 255 };
+static Color yellow = { 255, 255,   0 };
+static Color green  = {   0, 255,   0 };
+static Color red    = { 255,   0,   0 };
 
 class Scene2D
 {
@@ -74,6 +85,7 @@ public:
 #ifdef GRAPHICS_USES_FONT
 	bool InitFont(FT_Face *face, const char *fontPath, int fontSize);
 	void DrawText(char *txt, FT_Face face, int startX, int startY, Color bgColor, Color fgColor);
+	void DrawTextf(FT_Face face, int startX, int startY, Color bgColor, Color fgColor, char* fmt, ...); // Added by me, is not in graphics.h by default
 	void DrawTextContainer(char *txt, FT_Face face, int startX, int startY, int maxW, int maxH, Color bgColor, Color fgColor);
 #endif
 };

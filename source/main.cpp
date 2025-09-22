@@ -1,14 +1,4 @@
-#include <stdio.h>
-#include <signal.h>
-#include <stdexcept>
-#include <thread>
 
-#include "controller.h"
-#include "debug.h"
-#include "graphics.h"
-#include "png.h"
-
-// Dimensions
 #define FRAME_WIDTH     1920
 #define FRAME_HEIGHT    1080
 #define FRAME_DEPTH        4
@@ -17,123 +7,88 @@
 #define FONT_SIZE_SMALL  16
 
 
-// #define DEBUG_LOG
+#include <stdio.h>
+#include <signal.h>
 
-#ifdef DEBUG_LOG
- #define DEBUG_IP   "192.168.0.48"
- #define DEBUG_PORT 3333
-#endif
-
+#include <string>
+#include <vector>
 
 
+// Openorbis
+#include "controller.h"
+#include "graphics.h"
+#include "png.h"
+
+// Custom
+#include "utils.h"
+
+
+
+// Fonts for the menu
 FT_Face fontLarge;
 FT_Face fontSmall;
 
-Color black;
-Color white;
-Color yellow;
-Color green;
 
-int frameID = 0;
 
 int main(void) {
-
-    char hostname[64];
-    if (gethostname(hostname, sizeof(hostname)) != 0)
-        strcpy(hostname, "PS4");
-
-#ifdef DEBUG_LOG
-    if (Debug::open(DEBUG_IP, DEBUG_PORT)) {
-        signal(SIGSEGV, Debug::crash_handler);
-        signal(SIGILL, Debug::crash_handler);
-        signal(SIGFPE, Debug::crash_handler);
-        signal(SIGABRT, Debug::crash_handler);
-        
-        // Greet debug server
-        Debug::log("[OrbisForge] Hello from ");
-        Debug::log(hostname);
-        Debug::log("\n");
-    }
-    else
-        utils_SceKernelNotificationRequest("Proceeding with no debug log.");
-#endif
-
-    // Initialize controller
-    auto controller = new Controller();
-
-    if (!controller->Init(-1)) {
-#ifdef DEBUG_LOG
-        Debug::log("[OrbisForge] Failed to initialize controller, proceeding to endless loop\n");
-#endif
+    int result;
+    
+    // Initialize UserService
+    result = sceUserServiceInitialize(NULL);
+    if (result != 0 && result != 0x80960003) { // Failed to initialize UserService
+        utils_SceKernelNotificationRequest((const char*)"Failed to initialize UserService!");
         for (;;);
     }
 
-#ifdef DEBUG_LOG
-    Debug::log("[OrbisForge] Successfuly initialized controller\n");
-#endif
 
+    // Initialize controller
+    auto controller = new Controller();
+    if (!controller->Init(-1)) { // Failed to initialize Controller
+        utils_SceKernelNotificationRequest((const char*)"Failed to initialize controller!");
+        for (;;);
+    }
 
 
     // Initialize 2D scene
     auto scene = new Scene2D(FRAME_WIDTH, FRAME_HEIGHT, FRAME_DEPTH);
-    if (!scene->Init(0xC000000, 2)) {
-#ifdef DEBUG_LOG
-        Debug::log("[OrbisForge] Failed to initialize 2D scene, proceeding to endless loop\n");
-#endif
+    if (!scene->Init(0xC000000, 2)) { // Failed to initialize 2D scene
+        utils_SceKernelNotificationRequest((const char*)"Failed to initialize 2D scene!");
         for (;;);
     }
 
-#ifdef DEBUG_LOG
-    Debug::log("[OrbisForge] Successfully initialized 2D scene\n");
-#endif
 
-    black  = {   0,   0,   0 };
-    white  = { 255, 255, 255 };
-    yellow = { 255, 255,   0 };
-    green  = {   0, 255,   0 };
-
-    const char* font = "/app0/assets/fonts/Gontserrat-Regular.ttf";
-
-    Debug::log("[OrbisForge] Initializing fonts ...\n");
-
-    if (!scene->InitFont(&fontLarge, font, FONT_SIZE_LARGE)) {
-#ifdef DEBUG_LOG
-        Debug::log("[OrbisForge] Failed to initialized large font, proceeding to endless loop\n");
-#endif
-        for (;;);
-    }
-#ifdef DEBUG_LOG
-    Debug::log("[OrbisForge] Successfully initialized large font.\n");
-#endif
-
-    if (!scene->InitFont(&fontSmall, font, FONT_SIZE_SMALL)) {
-#ifdef DEBUG_LOG
-        Debug::log("[OrbisForge] Failed to initialize small font, proceeding to endless loop\n");
-#endif
+    // Initialize large font
+    if (!scene->InitFont(&fontLarge, (const char*)"/app0/assets/fonts/Gontserrat-Regular.ttf", FONT_SIZE_LARGE)) { // Failed to initialize large font
+        utils_SceKernelNotificationRequest((const char*)"Failed to initialize large font!");
         for (;;);
     }
 
-#ifdef DEBUG_LOG
-    Debug::log("[OrbisForge] Successfully initialized small font.\n");
-#endif
+    // Initialize small font
+    if (!scene->InitFont(&fontSmall, (const char*)"/app0/assets/fonts/Gontserrat-Regular.ttf", FONT_SIZE_SMALL)) { // Failed to initialize small font
+        utils_SceKernelNotificationRequest((const char*)"Failed to initialize small font!");
+        for (;;);
+    }
+
+    utils_SceKernelNotificationRequest((const char*)"Started!");
+
+    // Load PNGs
+    auto anvil = new PNG("/app0/assets/images/anvil.png");
+    auto luma = new PNG("/app0/assets/images/luma.png");
 
 
+    char firmwareVersion[8]; // Holds the current firmware version as an string (e.g. 11.00)
+    int userId; // Holds the user ID of the current logged in user
+    char username[32]; // Holds the username of the current logged in user
 
-
-    auto anvil_png = new PNG("/app0/assets/images/anvil.png");
-#ifdef DEBUG_LOG
-    Debug::log("[OrbisForge] Loaded /app0/assets/images/anvil.png\n");
-#endif
-
-
-    // Menu rendering etc
-
-    int selectedIndex = 0;
-    int lastPixel;
+    
+    // Menu vars
+    int lastLine;
+    int selectedMenuIndex = 0;
 
     const char* menuItems[] = {
         "Disable system updates",
-        "Enable system updates"
+        "Enable system updates",
+        "Credits"
     };
 
     int numMenuItems = sizeof(menuItems) / sizeof(menuItems[0]);
@@ -145,136 +100,110 @@ int main(void) {
     const int REPEAT_HOLD_DELAY = 3;   // Frames till next repeats (~30ms)
 
 
-
-
-
-
-
-
-
-
-    OrbisKernelSwVersion SwVersion;
-    sceKernelGetSystemSwVersion(&SwVersion);
-
-
-    // E.g. PS4 11.00
-    char info_text[128];
-    snprintf(info_text, sizeof(info_text), "%s ", hostname);
-
-    if (SwVersion.s_version[1] == '.')
-        strncat(info_text, SwVersion.s_version, 4);
-    else
-        strncat(info_text, SwVersion.s_version, 5);
-
-    for (;;) {
-        lastPixel = 100;
+    int frameID = 0;
+    for (;;) { // Main loop
+        getFirmwareVersionStr(firmwareVersion); // Get current firmware version
+        getCurrentUserId(&userId); // Get user ID
+        getUsernameFromUserId(userId, username, sizeof(username) - 1); // Get username
 
         scene->SetActiveFrameBuffer((frameID + 1) % 2);
 
+
         scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
-        scene->DrawText(info_text, fontSmall, 75, 1005, black, white);
+        scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
         scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
-        anvil_png->Draw(scene, 1475, 580);
+
+        anvil->Draw(scene, 1475, 580);
+
+        
+        lastLine = 100;
 
         for (int i = 0; i < numMenuItems; i++) {
-            if (i == selectedIndex)
-                scene->DrawText((char*)menuItems[i], fontSmall, 75, lastPixel + 25, black, yellow);
-            else
-                scene->DrawText((char*)menuItems[i], fontSmall, 75, lastPixel + 25, black, white);
+            lastLine += 25;
 
-            lastPixel += 25;
+            if (i == selectedMenuIndex)
+                scene->DrawText((char*)menuItems[i], fontSmall, 75, lastLine, black, yellow);
+            else
+                scene->DrawText((char*)menuItems[i], fontSmall, 75, lastLine, black, white);
         }
+
 
         bool downPressed = controller->DpadDownPressed();
         bool upPressed = controller->DpadUpPressed();
+
 
         // DOWN Scroll
         if (downPressed) {
             downHoldCounter++;
             if (downHoldCounter == 1 ||
                 (downHoldCounter > INITIAL_HOLD_DELAY && (downHoldCounter - INITIAL_HOLD_DELAY) % REPEAT_HOLD_DELAY == 0)) {
-                if (selectedIndex < numMenuItems - 1) selectedIndex++;
+                if (selectedMenuIndex < numMenuItems - 1)
+                    selectedMenuIndex++;
             }
         }
-        else {
+        else
             downHoldCounter = 0;
-        }
 
         // UP scroll
         if (upPressed) {
             upHoldCounter++;
             if (upHoldCounter == 1 ||
                 (upHoldCounter > INITIAL_HOLD_DELAY && (upHoldCounter - INITIAL_HOLD_DELAY) % REPEAT_HOLD_DELAY == 0)) {
-                if (selectedIndex > 0) selectedIndex--;
+                if (selectedMenuIndex > 0)
+                    selectedMenuIndex--;
             }
         }
-        else {
+        else
             upHoldCounter = 0;
-        }
-        
-        if (controller->XPressed()) {
 
-            // Disable system updates
-            if (strcmp(menuItems[selectedIndex], "Disable system updates") == 0) {
-                scene->SetActiveFrameBuffer((frameID + 1) % 2);
+
+
+        if (controller->XPressed()) { // Something was selected
+            if (strcmp(menuItems[selectedMenuIndex], "Disable system updates") == 0) { // Disable system updates (Scene-Collective's disable updates payload was used as reference)
                 scene->FrameBufferFill(black);
 
+
                 scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
-                scene->DrawText(info_text, fontSmall, 75, 1005, black, white);
+                scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
                 scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
-                anvil_png->Draw(scene, 1475, 580);
+
+                anvil->Draw(scene, 1475, 580);
+
+
+                // Disable system updates
 
                 scene->DrawText((char*)"Unlinking /update/PS4UPDATE.PUP.net.temp ...", fontSmall, 75, 125, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Unlinking /update/PS4UPDATE.PUP.net.temp ...\n");
-#endif
                 sceKernelUnlink("/update/PS4UPDATE.PUP.net.temp");
 
-
                 scene->DrawText((char*)"Removing directory /update/PS4UPDATE.PUP.net.temp ...", fontSmall, 75, 150, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Removing directory /update/PS4UPDATE.PUP.net.temp ...\n");
-#endif
                 sceKernelRmdir("/update/PS4UPDATE.PUP.net.temp");
 
                 scene->DrawText((char*)"Creating directory /update/PS4UPDATE.PUP.net.temp with OrbisKernelMode 777 ...", fontSmall, 75, 175, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Creating directory /update/PS4UPDATE.PUP.net.temp with OrbisKernelMode 777 ...\n");
-#endif
-                sceKernelMkdir("/update/PS4UPDATE.PUP.net.temp", 777);
+                sceKernelMkdir("/update/PS4UPDATE.PUP.net.temp", 777); // Create dummy directory
 
 
 
                 scene->DrawText((char*)"Unlinking /update/PS4UPDATE.PUP ...", fontSmall, 75, 200, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Unlinking /update/PS4UPDATE.PUP ...\n");
-#endif
                 sceKernelUnlink("/update/PS4UPDATE.PUP");
 
                 scene->DrawText((char*)"Removing directory /update/PS4UPDATE.PUP ...", fontSmall, 75, 225, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Removing directory /update/PS4UPDATE.PUP ...\n");
-#endif
                 sceKernelRmdir("/update/PS4UPDATE.PUP");
 
                 scene->DrawText((char*)"Creating directory /update/PS4UPDATE.PUP with OrbisKernelMode 777 ...", fontSmall, 75, 250, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Creating directory /update/PS4UPDATE.PUP with OrbisKernelMode 777 ...\n");
-#endif
-                sceKernelMkdir("/update/PS4UPDATE.PUP", 777);
+                sceKernelMkdir("/update/PS4UPDATE.PUP", 777); // Create dummy directory
 
+
+                // System updates disabled
 
                 scene->DrawText((char*)"Finished! Press O to go back to the main menu.", fontSmall, 75, 300, black, green);
-                utils_SceKernelNotificationRequest("Disabled system updates!");
 
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Disabled system updates\n");
-#endif
+
+                // Wait for user to press circle
 
                 scene->SubmitFlip(frameID);
                 scene->FrameWait(frameID);
                 scene->FrameBufferSwap();
-               
+
                 for (;;) {
                     if (controller->CirclePressed())
                         break;
@@ -293,45 +222,41 @@ int main(void) {
                 continue;
             }
 
-            // Enable system updates
-            else if (strcmp(menuItems[selectedIndex], "Enable system updates") == 0) {
-                scene->SetActiveFrameBuffer((frameID + 1) % 2);
+            else if (strcmp(menuItems[selectedMenuIndex], "Enable system updates") == 0) { // Disable system updates (Scene-Collective's enable updates payload was used as reference)
                 scene->FrameBufferFill(black);
 
-                scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
-                scene->DrawText(info_text, fontSmall, 75, 1005, black, white);
-                scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
-                anvil_png->Draw(scene, 1475, 580);
 
+                scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
+                scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
+                scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
+
+                anvil->Draw(scene, 1475, 580);
+
+
+                // Enable system updates
+                
                 scene->DrawText((char*)"Unlinking /update/PS4UPDATE.PUP.net.temp ...", fontSmall, 75, 125, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Unlinking /update/PS4UPDATE.PUP.net.temp ...\n");
-#endif
                 sceKernelUnlink("/update/PS4UPDATE.PUP.net.temp");
 
                 scene->DrawText((char*)"Removing directory /update/PS4UPDATE.PUP.net.temp ...", fontSmall, 75, 150, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Removing directory /update/PS4UPDATE.PUP.net.temp ...\n");
-#endif
-                sceKernelRmdir("/update/PS4UPDATE.PUP.net.temp");
+                sceKernelRmdir("/update/PS4UPDATE.PUP.net.temp"); // Remove dummy directory
+
+
 
                 scene->DrawText((char*)"Unlinking /update/PS4UPDATE.PUP ...", fontSmall, 75, 175, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Unlinking /update/PS4UPDATE.PUP ...\n");
-#endif
                 sceKernelUnlink("/update/PS4UPDATE.PUP");
 
                 scene->DrawText((char*)"Removing directory /update/PS4UPDATE.PUP ...", fontSmall, 75, 200, black, white);
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Removing directory /update/PS4UPDATE.PUP ...\n");
-#endif
-                sceKernelRmdir("/update/PS4UPDATE.PUP");
+                sceKernelRmdir("/update/PS4UPDATE.PUP");  // Remove dummy directory
+
+
+
+                // System updates enabled
 
                 scene->DrawText((char*)"Finished! Press O to go back to the main menu.", fontSmall, 75, 250, black, green);
-                utils_SceKernelNotificationRequest("Enabled system updates!");
-#ifdef DEBUG_LOG
-                Debug::log("[OrbisForge] Enabled system updates\n");
-#endif
+
+
+                // Wait for user to press circle
 
                 scene->SubmitFlip(frameID);
                 scene->FrameWait(frameID);
@@ -354,17 +279,66 @@ int main(void) {
 
                 continue;
             }
+
+
+
+
+
+            else if (strcmp(menuItems[selectedMenuIndex], "Credits") == 0) { // Display credits
+                scene->SetActiveFrameBuffer((frameID + 1) % 2);
+                scene->FrameBufferFill(black);
+
+
+                scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
+                scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
+                scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
+
+
+
+                luma->Draw(scene, 741, 221); // Draw purple luma
+                scene->DrawText((char*)"OrbisForge by @PurpleLUM4 using OpenOrbis", fontSmall, 780, 650, black, white);
+
+
+
+                // Wait for user to press circle
+
+                scene->SubmitFlip(frameID);
+                scene->FrameWait(frameID);
+                scene->FrameBufferSwap();
+
+                for (;;) {
+                    if (controller->CirclePressed())
+                        break;
+
+                    sceKernelUsleep(10000); // 10ms Sleep
+                }
+
+                scene->SetActiveFrameBuffer((frameID + 1) % 2);
+                scene->FrameBufferFill(black);
+
+                scene->SubmitFlip(frameID);
+                scene->FrameWait(frameID);
+                scene->FrameBufferSwap();
+                frameID++;
+
+                continue;
+            }
+
         }
+
+
+
+
+
+
 
         // Frame Render + Swap
         scene->SubmitFlip(frameID);
         scene->FrameWait(frameID);
         scene->FrameBufferSwap();
-        frameID++;
 
-        sceKernelUsleep(10000); // 10ms Sleep
+        frameID++;
     }
 
-    Debug::log("[OrbisForge] Execution finished, proceeding to endless loop.");
     for (;;);
 }

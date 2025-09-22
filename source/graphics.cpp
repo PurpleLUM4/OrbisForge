@@ -1,4 +1,4 @@
-#include <stdlib.h>
+ #include <stdlib.h>
 #include <string.h>
 #include <stdio.h>
 #include <errno.h>
@@ -322,5 +322,24 @@ void Scene2D::DrawText(char *txt, FT_Face face, int startX, int startY, Color bg
         xOffset += slot->advance.x >> 6;
     }
 }
+
+
+
+
+// Added by me not in graphics.cpp by default
+void Scene2D::DrawTextf(FT_Face face, int startX, int startY, Color bgColor, Color fgColor, char* fmt, ...) {
+	char text[512];
+
+	va_list args;
+	va_start(args, fmt);
+	vsnprintf(text, sizeof(text), fmt, args);
+	va_end(args);
+
+	DrawText(text, face, startX, startY, bgColor, fgColor);
+}
+
+
+
+
 #endif
 
