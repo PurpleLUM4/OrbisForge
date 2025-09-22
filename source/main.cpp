@@ -36,7 +36,7 @@ int main(void) {
     // Initialize UserService
     result = sceUserServiceInitialize(NULL);
     if (result != 0 && result != 0x80960003) { // Failed to initialize UserService
-        utils_SceKernelNotificationRequest((const char*)"Failed to initialize UserService!");
+        sceKernelNotificationRequestf((char*)"Failed to initialize UserService!");
         for (;;);
     }
 
@@ -44,7 +44,7 @@ int main(void) {
     // Initialize controller
     auto controller = new Controller();
     if (!controller->Init(-1)) { // Failed to initialize Controller
-        utils_SceKernelNotificationRequest((const char*)"Failed to initialize controller!");
+        sceKernelNotificationRequestf((char*)"Failed to initialize controller!");
         for (;;);
     }
 
@@ -52,24 +52,22 @@ int main(void) {
     // Initialize 2D scene
     auto scene = new Scene2D(FRAME_WIDTH, FRAME_HEIGHT, FRAME_DEPTH);
     if (!scene->Init(0xC000000, 2)) { // Failed to initialize 2D scene
-        utils_SceKernelNotificationRequest((const char*)"Failed to initialize 2D scene!");
+        sceKernelNotificationRequestf((char*)"Failed to initialize 2D scene!");
         for (;;);
     }
 
 
     // Initialize large font
     if (!scene->InitFont(&fontLarge, (const char*)"/app0/assets/fonts/Gontserrat-Regular.ttf", FONT_SIZE_LARGE)) { // Failed to initialize large font
-        utils_SceKernelNotificationRequest((const char*)"Failed to initialize large font!");
+        sceKernelNotificationRequestf((char*)"Failed to initialize large font!");
         for (;;);
     }
 
     // Initialize small font
     if (!scene->InitFont(&fontSmall, (const char*)"/app0/assets/fonts/Gontserrat-Regular.ttf", FONT_SIZE_SMALL)) { // Failed to initialize small font
-        utils_SceKernelNotificationRequest((const char*)"Failed to initialize small font!");
+        sceKernelNotificationRequestf((char*)"Failed to initialize small font!");
         for (;;);
     }
-
-    utils_SceKernelNotificationRequest((const char*)"Started!");
 
     // Load PNGs
     auto anvil = new PNG("/app0/assets/images/anvil.png");
@@ -109,7 +107,7 @@ int main(void) {
         scene->SetActiveFrameBuffer((frameID + 1) % 2);
 
 
-        scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
+        scene->DrawText((char*)"Orbis Forge v1.02", fontLarge, 75, 75, black, white);
         scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
         scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
 
@@ -163,7 +161,7 @@ int main(void) {
                 scene->FrameBufferFill(black);
 
 
-                scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
+                scene->DrawText((char*)"Orbis Forge v1.02", fontLarge, 75, 75, black, white);
                 scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
                 scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
 
@@ -226,7 +224,7 @@ int main(void) {
                 scene->FrameBufferFill(black);
 
 
-                scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
+                scene->DrawText((char*)"Orbis Forge v1.02", fontLarge, 75, 75, black, white);
                 scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
                 scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
 
@@ -289,7 +287,7 @@ int main(void) {
                 scene->FrameBufferFill(black);
 
 
-                scene->DrawText((char*)"Orbis Forge", fontLarge, 75, 75, black, white);
+                scene->DrawText((char*)"Orbis Forge v1.02", fontLarge, 75, 75, black, white);
                 scene->DrawTextf(fontSmall, 75, 1005, black, white, (char*)"PS4 %s  -  %s (User ID: 0x%x)", firmwareVersion, username, userId);
                 scene->DrawText((char*)"https://github.com/PurpleLUM4", fontSmall, 1600, 1005, black, white);
 

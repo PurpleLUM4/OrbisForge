@@ -9,5 +9,3 @@ void sceKernelNotificationRequestf(char* fmt, ...);
 void getFirmwareVersionStr(char* out);
 void getCurrentUserId(int* out);
 void getUsernameFromUserId(int userId, char* out, size_t outSize);
-
-void utils_SceKernelNotificationRequest(const char* text);
