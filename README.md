@@ -1,4 +1,4 @@
-# OrbisForge - v1.02
+# OrbisForge - v1.02 Stable
 
 OrbisForge is a lightweight and user-friendly system tweaking tool for PS4 consoles with HEN.
 
