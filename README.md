@@ -1,6 +1,6 @@
-# OrbisForge - v1.02 Stable
+# Orbis Forge - v1.02 Stable
 
-OrbisForge is a lightweight and user-friendly system tweaking tool for PS4 consoles with HEN.
+Orbis Forge is a lightweight and user-friendly system tweaking tool for PS4 consoles with HEN.
 
 <img src="https://github.com/PurpleLUM4/OrbisForge/blob/main/assets/images/anvil.png?raw=true">
 
