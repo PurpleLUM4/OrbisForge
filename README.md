@@ -6,7 +6,7 @@ OrbisForge is a lightweight and user-friendly system tweaking tool for PS4 conso
 
 ### Changelog
  - OrbisForge was completly rewritten and heavily optimized
- - Now displaying the User ID and username of the current logged in user next to the Firmware in the bottom left corner
+ - Now displaying the User ID and username of the current logged in user next to the firmware in the bottom left corner
  - Removed debug log
  - Added credits
 
